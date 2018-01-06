@@ -1,0 +1,2 @@
+file 'C:/clips/intro.mp4'
+file 'C:/clips/outro.mp4'
