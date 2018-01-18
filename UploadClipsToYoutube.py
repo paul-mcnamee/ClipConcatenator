@@ -11,7 +11,7 @@ from datetime import timedelta
 # needs to be the output directory from the DownloadTwitchClips.py results
 youtube_uploader_dir = 'D:/VideoConcatenator/'
 clips_dir = 'C:/temp/' + str((datetime.date.today() - timedelta(days=1)).strftime('%Y-%m-%d'))
-# clips_dir = 'C:/temp/2017-12-26'
+# clips_dir = 'C:/temp/2018-01-06'
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -130,20 +130,25 @@ def clean_tags(tags):
     return tags
 
 
-logger.info("Starting Uploader Process.")
-all_dirs = [directory_with_clips[0] for directory_with_clips in os.walk(clips_dir)]
-for current_dir in all_dirs:
-    logger.info('Finding clips to upload to youtube.')
-    clips = find_clips_to_upload(current_dir)
-    logger.info('Found %s clips to upload in %s', str(clips.__len__()), current_dir)
-    for clip in clips:
-        logger.info('Generating title and tags for clip.')
-        clip_title, additional_tags = generate_title_for_clip(clip[1])
-        # TODO: check youtube for clip name if it exists already
-        tags = generate_tags_for_clip(clip[1], additional_tags)
-        tags = clean_tags(tags)
-        logging.info(tags)
-        category_id = "20"  # gaming
-        logger.info('Starting upload for clip.')
-        upload_to_youtube(category_id, clip[1], clip[0], tags, clip_title, "public")
-        # TODO: delete or move the uploaded clips ?? currently just manually moving to the 4TB drive
+def main():
+    logger.info("Starting Uploader Process.")
+    all_dirs = [directory_with_clips[0] for directory_with_clips in os.walk(clips_dir)]
+    for current_dir in all_dirs:
+        logger.info('Finding clips to upload to youtube.')
+        clips = find_clips_to_upload(current_dir)
+        logger.info('Found %s clips to upload in %s', str(clips.__len__()), current_dir)
+        for clip in clips:
+            logger.info('Generating title and tags for clip.')
+            clip_title, additional_tags = generate_title_for_clip(clip[1])
+            # TODO: check youtube for clip name if it exists already
+            tags = generate_tags_for_clip(clip[1], additional_tags)
+            tags = clean_tags(tags)
+            logging.info(tags)
+            category_id = "20"  # gaming
+            logger.info('Starting upload for clip.')
+            upload_to_youtube(category_id, clip[1], clip[0], tags, clip_title, "public")
+            # TODO: delete or move the uploaded clips ?? currently just manually moving to the 4TB drive
+
+
+if __name__ == "__main__":
+    main()

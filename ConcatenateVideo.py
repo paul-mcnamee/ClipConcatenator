@@ -1,12 +1,13 @@
-from glob import glob
+import glob
 import os
 import json
 import subprocess
 import datetime
 import logging
+from datetime import timedelta
+import DownloadTwitchClips
 
-# TODO: AFTER THIS IS FULLY WORKING: we should look for the "combined" clip name to potentially skip so we can pick up where we previously left off if the process failed or add something to flag the directory and remove it from the list to process
-# TODO: combine the files with transitions (not sure about transitions or not) (1, 2, 3, etc.) for top 5 or top 10 videos
+# TODO: combine the files with transitions (maybe?) 1, 2, 3, etc. for top # of clips, count down from max #
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -23,10 +24,12 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 # start_dir needs to be the output directory from the DownloadTwitchClips.py results
-start_dir = 'C:/temp/' + str(datetime.date.today().strftime('%Y-%m-%d'))
+# start_dir = 'C:/temp/' + str(datetime.date.today().strftime('%Y-%m-%d'))
+start_dir = 'C:/temp/2018-01-15'
+
 outro_clip_path = 'C:/clips/intro.mp4' # TODO: Create this
 intro_clip_path = 'C:/clips/intro.mp4'
-watermark_image_path = 'C:/clips/watermark.png' # TODO: Create this
+watermark_image_path = 'C:/clips/watermark.png'
 ffmpeg_path = 'C:/ffmpeg/bin/ffmpeg.exe'
 output_dir = 'C:/combined_clips/'
 
@@ -53,10 +56,10 @@ def generate_clip_list(directory):
     :return:
     """
     clips = []
-    combined_files = glob(directory + '\combined.mp4')
+    combined_files = glob.glob(directory + '\combined.mp4')
     if combined_files.__len__() > 0:
         return clips
-    files = glob(directory + '\clipInfo_*.txt')
+    files = glob.glob(directory + '\clipInfo_*.txt')
     logger.info('Generating clip list')
     if files.__len__() > 0:
         for file in files:
@@ -109,7 +112,6 @@ def encode_clip(clip, output_clip_path):
     :param output_clip_path:
     :return:
     """
-    # TODO: probably better to just not use a file for this since it's a single clip each time...
     # Delete the file of clips to encode
     try:
         os.remove("clips_to_encode.txt")
@@ -119,16 +121,18 @@ def encode_clip(clip, output_clip_path):
     name, ext = os.path.splitext(output_clip_path)
     output_clip_path = "{name}_encoded{ext}".format(name=name, ext=ext)
 
-    # Check if the encoded clip already exists
-    if os.path.exists(output_clip_path):
+    all_dirs = [directory_with_clips[0] for directory_with_clips in os.walk(start_dir)]
+
+    # look in other folders for the encoded clip
+    if DownloadTwitchClips.copy_existing_clip(clip, all_dirs[0], output_clip_path, False, True):
         logger.info('Encoded clip already exists! %s', clip["file_name"])
         return True, output_clip_path
 
     logger.info('Encoding clip %s', clip["file_name"])
     # write the clip path to the file to encode
     with open("clips_to_encode.txt", 'w', encoding='utf-8') as outfile:
-        clip_file_name = os.path.normpath(clip["file_name"]).replace('\\', '/').replace('\'', '\\\'')
-        outfile.write("file " + clip_file_name + "\n")
+        clip_file_path = os.path.normpath(clip["file_name"]).replace('\\', '/').replace('\'', '\\\'')
+        outfile.write("file " + clip_file_path + "\n")
         outfile.close()
 
     # encode the file
@@ -160,7 +164,7 @@ def combine_clips(clips):
         for index, clip in enumerate(clips):
             clip_to_find = clip["file_name"]
             slug_from_clip = os.path.basename(clip_to_find).split('_')[1].split('.')[0]
-            clip_path = glob(os.path.dirname(clip_to_find) + '\\*_' + slug_from_clip + '.mp4', recursive=False)[0]
+            clip_path = glob.glob(os.path.dirname(clip_to_find) + '\\*_' + slug_from_clip + '.mp4', recursive=False)[0]
             success, encoded_clip_path = encode_clip(clip, clip_path)
             if success:
                 clip_description = clip_description + "Clip #" + str(index + 1) + " " + clip["broadcaster"] + ": " + clip["broadcaster_url"] + "\n"
@@ -193,7 +197,7 @@ def add_watermark(clip):
     logger.info('Adding watermark to clip.')
     success = False
     watermarked_clip_name = "watermarked.mp4"
-    watermarked_clip_path = os.path.dirname(clips[0]["file_name"]) + "\\" + watermarked_clip_name
+    watermarked_clip_path = os.path.dirname(clip["file_name"]) + "\\" + watermarked_clip_name
     # ffmpeg -i input -i logo -filter_complex 'overlay=10:main_h-overlay_h-10' output
     args = ["-y", "-i", clip, "-i", watermark_image_path, "-filter_complex", "overlay=5:H-h-5:format=rgb,format=yuv420p", "-codec:a", "copy", watermarked_clip_path]
     run_ffmpeg(args)
@@ -211,22 +215,27 @@ def run_ffmpeg(args):
     subprocess.call(args)
 
 
-logger.info("Starting Concat Process.")
-# start_dir = 'C:/temp/'
-# start_dir = 'C:/temp/2017-11-21/games'
-all_dirs = [directory_with_clips[0] for directory_with_clips in os.walk(start_dir)]
+def main():
+    logger.info("Starting Concat Process.")
+    # start_dir = 'C:/temp/'
+    # start_dir = 'C:/temp/2018-01-15'
+    all_dirs = [directory_with_clips[0] for directory_with_clips in os.walk(start_dir)]
 
-for current_dir in all_dirs:
-    # we only want directories with clips in them
-    clips_to_combine = []
-    clips = generate_clip_list(current_dir)
-    if clips.__len__() > 0:
-        sort_clips(clips)
-        for clip in clips:
-            clips_to_combine.append(clip)
+    for current_dir in all_dirs:
+        # we only want directories with clips in them
+        clips_to_combine = []
+        clips = generate_clip_list(current_dir)
+        if clips.__len__() > 0:
+            sort_clips(clips)
+            for clip in clips:
+                clips_to_combine.append(clip)
 
-        # combine the clips with the intro and outro and add the watermark
-        # description_text = generate_description_text(clips)
-        success, clip_path, clip_description = combine_clips(clips_to_combine)
-        # skip adding the watermark -- don't think it's necessary
-        # success, clip_path = add_watermark(clip_path)
+            # combine the clips with the intro and outro and add the watermark
+            # description_text = generate_description_text(clips)
+            success, clip_path, clip_description = combine_clips(clips_to_combine)
+            # skip adding the watermark -- don't think it's necessary
+            # success, clip_path = add_watermark(clip_path)
+
+
+if __name__ == "__main__":
+    main()

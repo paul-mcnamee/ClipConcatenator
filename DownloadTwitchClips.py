@@ -31,6 +31,7 @@ with open('twitch_headers.json') as json_data:
     headers = json.load(json_data)
     headers = headers[0]
 
+
 def increase_downloaded_clip_count():
     global num_downloaded_clips
     num_downloaded_clips = num_downloaded_clips + 1
@@ -198,34 +199,38 @@ def delete_excess_clips(clips):
     return delete_clips_from_list(clips, indices_to_delete)
 
 
-def clip_already_downloaded(clip, base_directory, path_to_copy_file):
+def copy_existing_clip(clip, base_directory, path_to_copy_file, copy_clip_info=True, look_for_encoded_clip=False):
     """
     Check if we already downloaded the same clip
     Copy the clip to the new location
     :param clip:
     :param base_directory:
     :param path_to_copy_file:
+    :param copy_clip_info:
+    :param look_for_encoded_clip:
     :return:
     """
     clip_exists = False
 
-    res = [f for f in glob.iglob(base_directory + "/**/*.mp4", recursive=True) if str(clip['slug']) in f]
+    res = [f for f in glob.iglob(base_directory + "/**/*.mp4", recursive=True)
+           if str(clip['slug'] + "_encoded" if look_for_encoded_clip else "") in f]
     if res.__len__() > 0:
         # clip found as a duplicate already downloaded elsewhere
         logger.info("Clip %s already exists at %s", str(clip['slug']), str(res[0]))
         clip_exists = True
         res2 = [f for f in glob.iglob(os.path.dirname(path_to_copy_file) + "/**/*.mp4", recursive=True) if
-                str(clip['slug']) in f]
+                str(clip['slug'] + "_encoded" if look_for_encoded_clip else "") in f]
         if not res2.__len__() > 0:
             # clip is not copied to the current folder, copy the clip
             logger.info("Found already downloaded file at %s copying file to %s", res[0], path_to_copy_file)
             shutil.copy2(res[0], path_to_copy_file)
 
             # also copy clip info
-            res3 = [f for f in glob.iglob(os.path.dirname(base_directory) + "/**/*.txt", recursive=True) if
-                    str(clip['slug']) in f and 'clipInfo' in f]
-            if res3.__len__() > 0:
-                shutil.copy2(res3[0], os.path.dirname(path_to_copy_file))
+            if copy_clip_info:
+                res3 = [f for f in glob.iglob(os.path.dirname(base_directory) + "/**/*.txt", recursive=True) if
+                        str(clip['slug']) in f and 'clipInfo' in f]
+                if res3.__len__() > 0:
+                    shutil.copy2(res3[0], os.path.dirname(path_to_copy_file))
     return clip_exists
 
 
@@ -254,9 +259,8 @@ def get_clips_from_twitch(channel, cursor, game_name, language, limit, period, t
             for index, clip in enumerate(clips):
                 logger.info("Attempting to remove duplicate clips from the retrieved list.")
                 clips = delete_clips_with_close_times(clip, clips)
-            clips = delete_clips_with_low_views(clips, 25)
+            clips = delete_clips_with_low_views(clips, 200)
             clips = delete_excess_clips(clips)
-            # TODO: check for min length, delete folder if clip is below min length?
             for clip in clips:
                 clip_response_page = re.get(clip['url']).text
                 download_url = parse_twitch_clip_url_response(clip_response_page)
@@ -277,7 +281,7 @@ def get_clips_from_twitch(channel, cursor, game_name, language, limit, period, t
                             json.dump(game, outfile)
                         game_info_was_saved = True
                     clip_file_name = output_path + str(clip['views']) + "_" + clip['slug'] + ".mp4"
-                    if not clip_already_downloaded(clip, output_directory, clip_file_name):
+                    if not copy_existing_clip(clip, output_directory, clip_file_name):
                         logger.info("Starting a clip download for %s", str(broadcaster_name))
                         download(download_url, clip_file_name)
                         increase_downloaded_clip_count()
@@ -329,36 +333,42 @@ def get_popular_channel_list():
             'markiplier', 'pokimane', 'froggen', 'aphromoo', 'olofmeister', 'followgrubby', 'bchillz']
 
 
-logger.info("Starting Downloader Process.")
-cursor = ""
-game_name = ""
-language = "en"
-limit = "30"
-period = "day"
-trending = ""
+def main():
+    logger.info("Starting Downloader Process.")
+    cursor = ""
+    game_name = ""
+    language = "en"
+    limit = "30"
+    period = "day"
+    trending = ""
 
-# TODO: add these back once we figure out how to encode videos faster, right now it's taking way too long...
-#
-# logger.info("Getting the top clips from the top channels.")
-# channels = get_popular_channel_list()
-# for channel in channels:
-#     get_clips_from_twitch(channel, cursor, game_name, language, limit, period, trending, category='channels')
+    # TODO: add these back once we figure out how to encode videos faster, right now it's taking way too long...
+    #
+    # logger.info("Getting the top clips from the top channels.")
+    # channels = get_popular_channel_list()
+    # for channel in channels:
+    #     get_clips_from_twitch(channel, cursor, game_name, language, limit, period, trending, category='channels')
 
-logger.info("Getting the top clips from the top games.")
-channel = ""
-games = get_popular_games_list(15)
-category = 'games'
-for game in games:
-    get_clips_from_twitch(channel, cursor, game['game']['name'], language, limit, period, trending, category, game)
+    logger.info("Getting the top clips from the top games.")
+    channel = ""
+    games = get_popular_games_list(15)
+    category = 'games'
+    for game in games:
+        get_clips_from_twitch(channel, cursor, game['game']['name'], language, limit, period, trending, category, game)
 
-logger.info("Getting the top clips from all of twitch.")
-channel = ""
-period = "day"
-limit = "30"
-category = 'twitch'
-get_clips_from_twitch(channel, cursor, game_name, language, limit, period, trending, category)
+    logger.info("Getting the top clips from all of twitch.")
+    channel = ""
+    period = "day"
+    limit = "30"
+    category = 'twitch'
+    get_clips_from_twitch(channel, cursor, game_name, language, limit, period, trending, category)
 
-end_time = datetime.datetime.now()
-total_processing_time_sec = (end_time - start_time).total_seconds()
-logger.info("Downloaded %s clips in %s seconds", num_downloaded_clips, total_processing_time_sec)
-logger.info("FINISHED!!!")
+    end_time = datetime.datetime.now()
+    total_processing_time_sec = (end_time - start_time).total_seconds()
+    logger.info("Downloaded %s clips in %s seconds", num_downloaded_clips, total_processing_time_sec)
+    logger.info("FINISHED!!!")
+
+
+if __name__ == "__main__":
+    main()
+
