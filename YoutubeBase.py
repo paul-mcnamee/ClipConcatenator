@@ -15,6 +15,7 @@ from oauth2client.contrib import gce
 # The CLIENT_SECRETS_FILE variable specifies the name of a file that contains
 # the OAuth 2.0 information for this application, including its client_id and
 # client_secret.
+# https://developers.google.com/api-client-library/python/auth/service-accounts
 CLIENT_SECRETS_FILE = "youtube_api_client_secrets.json"
 
 # This OAuth 2.0 access scope allows for full read/write access to the
