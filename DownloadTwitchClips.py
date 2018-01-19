@@ -213,13 +213,13 @@ def copy_existing_clip(clip, base_directory, path_to_copy_file, copy_clip_info=T
     clip_exists = False
 
     res = [f for f in glob.iglob(base_directory + "/**/*.mp4", recursive=True)
-           if str(clip['slug'] + "_encoded" if look_for_encoded_clip else "") in f]
+           if str(clip['slug'] + ("_encoded" if look_for_encoded_clip else "")) in f]
     if res.__len__() > 0:
         # clip found as a duplicate already downloaded elsewhere
         logger.info("Clip %s already exists at %s", str(clip['slug']), str(res[0]))
         clip_exists = True
         res2 = [f for f in glob.iglob(os.path.dirname(path_to_copy_file) + "/**/*.mp4", recursive=True) if
-                str(clip['slug'] + "_encoded" if look_for_encoded_clip else "") in f]
+                str(clip['slug'] + ("_encoded" if look_for_encoded_clip else "")) in f]
         if not res2.__len__() > 0:
             # clip is not copied to the current folder, copy the clip
             logger.info("Found already downloaded file at %s copying file to %s", res[0], path_to_copy_file)

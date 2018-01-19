@@ -27,6 +27,7 @@ handler.setFormatter(formatter)
 # add the handlers to the logger
 logger.addHandler(handler)
 
+
 def upload_to_youtube(category_id, file_location, description, tags, title, privacy):
     # https://github.com/porjo/youtubeuploader
     base_call = './youtubeuploader.exe'
