@@ -8,8 +8,12 @@ import requests as re
 import re as regex
 import logging
 import time
+import configparser
 
-output_directory = 'C:/temp/'
+
+config = configparser.ConfigParser()
+config.read('config.ini')
+output_directory = config.get('paths', 'output_dir')
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -330,7 +334,7 @@ def get_popular_channel_list():
             'monstercat', 'gassymexican', 'montanablack88', 'cryaotic', 'reckful', 'a_seagull', 'm0e_tv',
             'forsenlol', 'kaypealol', 'sovietwomble', 'ProfessorBroman', 'nickbunyun',
             'dansgaming', 'yogscast', 'zeeoon', 'rewinside', 'legendarylea', 'ninja',
-            'markiplier', 'pokimane', 'froggen', 'aphromoo', 'olofmeister', 'followgrubby', 'bchillz']
+            'markiplier', 'pokimane', 'froggen', 'aphromoo', 'olofmeister', 'followgrubby']
 
 
 def main():

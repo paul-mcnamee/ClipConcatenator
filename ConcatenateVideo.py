@@ -6,6 +6,7 @@ import datetime
 import logging
 from datetime import timedelta
 import DownloadTwitchClips
+import configparser
 
 # TODO: combine the files with transitions (maybe?) 1, 2, 3, etc. for top # of clips, count down from max #
 
@@ -23,15 +24,16 @@ handler.setFormatter(formatter)
 # add the handlers to the logger
 logger.addHandler(handler)
 
-# start_dir needs to be the output directory from the DownloadTwitchClips.py results
-# start_dir = 'C:/temp/' + str(datetime.date.today().strftime('%Y-%m-%d'))
-start_dir = 'C:/temp/2018-01-15'
+config = configparser.ConfigParser()
+config.read('config.ini')
 
-outro_clip_path = 'C:/clips/intro.mp4' # TODO: Create this
-intro_clip_path = 'C:/clips/intro.mp4'
-watermark_image_path = 'C:/clips/watermark.png'
-ffmpeg_path = 'C:/ffmpeg/bin/ffmpeg.exe'
-output_dir = 'C:/combined_clips/'
+start_dir = config.get('paths', 'output_dir') + str(datetime.date.today().strftime('%Y-%m-%d'))
+# start_dir = 'C:/temp/2018-01-31'
+
+outro_clip_path = config.get('paths', 'outro_clip_path')
+intro_clip_path = config.get('paths', 'intro_clip_path')
+watermark_image_path = config.get('paths', 'watermark_image_path')
+ffmpeg_path = config.get('paths', 'ffmpeg_path')
 
 
 def generate_description_text(clips):
@@ -137,7 +139,7 @@ def encode_clip(clip, output_clip_path):
 
     # encode the file
     args = ["-y", "-f", "concat", "-safe", "0", "-i", "clips_to_encode.txt", "-c:a", "aac",
-            "-c:v", "libx264", "-preset", "slow", "-crf", "18", "-pix_fmt", "yuv420p",
+            "-c:v", "libx264", "-preset", "faster", "-pix_fmt", "yuv420p",
             "-s", "1920x1080", "-r", "60", "-vbr", "5", "-ac", "2", "-ar", "44100", "-vsync", "0",
             output_clip_path]
     run_ffmpeg(args)
@@ -173,7 +175,7 @@ def combine_clips(clips):
         outfile.close()
 
     args = ["-y", "-f", "concat", "-safe", "0", "-i", "clips_to_combine.txt", "-c:a", "aac",
-            "-c:v", "libx264", "-preset", "slow", "-crf", "18", "-pix_fmt", "yuv420p",
+            "-c:v", "libx264", "-preset", "faster", "-pix_fmt", "yuv420p",
             "-s", "1920x1080", "-r", "60", "-vbr", "5", "-ac", "2", "-ar", "44100", "-vsync", "0",
             combined_clip_path]
     run_ffmpeg(args)

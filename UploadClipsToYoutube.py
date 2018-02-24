@@ -6,12 +6,15 @@ import os
 import base64
 import logging
 from datetime import timedelta
+import configparser
 
 
-# needs to be the output directory from the DownloadTwitchClips.py results
-youtube_uploader_dir = 'D:/VideoConcatenator/'
-clips_dir = 'C:/temp/' + str((datetime.date.today() - timedelta(days=1)).strftime('%Y-%m-%d'))
-# clips_dir = 'C:/temp/2018-01-06'
+config = configparser.ConfigParser()
+config.read('config.ini')
+youtube_uploader_dir = config.get('paths', 'youtube_uploader_dir')
+clips_dir = config.get('paths', 'output_dir') + str(datetime.date.today().strftime('%Y-%m-%d'))
+# clips_dir = 'C:/temp/' + str((datetime.date.today() - timedelta(days=1)).strftime('%Y-%m-%d'))
+# clips_dir = 'C:/temp/2018-01-24'
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -28,6 +31,7 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 
+# TODO: re-write this to use the youtube API directly...
 def upload_to_youtube(category_id, file_location, description, tags, title, privacy):
     # https://github.com/porjo/youtubeuploader
     base_call = './youtubeuploader.exe'
